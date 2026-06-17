@@ -2,7 +2,6 @@
 
 A native macOS network scanner built with SwiftUI. Discover devices on your local network, scan ports, measure link quality in real time, and run network diagnostics — all in a single Mac app.
 
-> Personal project. Not affiliated with Angry IP Scanner or any other tool.
 
 ## Features
 
