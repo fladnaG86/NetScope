@@ -24,6 +24,8 @@ targets:
       - path: NetScope/Resources
     dependencies:
       - package: GRDB
+    entitlements:
+      path: NetScope/Resources/NetScope.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.netscope.NetScope
@@ -31,6 +33,7 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         ENABLE_PREVIEWS: true
         SWIFT_EMIT_LOC_STRINGS: true
+        CODE_SIGN_ENTITLEMENTS: NetScope/Resources/NetScope.entitlements
 
   NetScopeTests:
     type: bundle.unit-test

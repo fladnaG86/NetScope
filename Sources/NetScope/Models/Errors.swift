@@ -1,6 +1,6 @@
 import Foundation
 
-enum ScanError: Error, LocalizedError {
+enum ScanError: Error, LocalizedError, Equatable {
     case networkUnavailable
     case subnetInvalid(String)
     case permissionDenied

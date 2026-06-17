@@ -2,19 +2,47 @@ import SwiftUI
 
 struct DeviceDetailView: View {
     @Bindable var viewModel: DeviceDetailViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        TabView {
-            OverviewTab(viewModel: viewModel)
-                .tabItem { Label("Overview", systemImage: "info.circle") }
-            PortsTab(device: viewModel.device)
-                .tabItem { Label("Ports", systemImage: "externaldrive.connected.to.line.below") }
-            MetricsTab(viewModel: viewModel)
-                .tabItem { Label("Metrics", systemImage: "chart.line.flattrend.xyaxis") }
-            DiagnosticsTab(viewModel: viewModel)
-                .tabItem { Label("Diagnostics", systemImage: "stethoscope") }
+        VStack(spacing: 0) {
+            // Header with close button
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.device.hostname ?? viewModel.device.ip)
+                        .font(.headline)
+                    Text(viewModel.device.ip)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.title2)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.bar)
+
+            Divider()
+
+            TabView {
+                OverviewTab(viewModel: viewModel)
+                    .tabItem { Label("Overview", systemImage: "info.circle") }
+                PortsTab(device: viewModel.device)
+                    .tabItem { Label("Ports", systemImage: "externaldrive.connected.to.line.below") }
+                MetricsTab(viewModel: viewModel)
+                    .tabItem { Label("Metrics", systemImage: "chart.line.flattrend.xyaxis") }
+                DiagnosticsTab(viewModel: viewModel)
+                    .tabItem { Label("Diagnostics", systemImage: "stethoscope") }
+            }
         }
-        .frame(minWidth: 500, minHeight: 400)
+        .frame(minWidth: 550, minHeight: 450)
     }
 }
 

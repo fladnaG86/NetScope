@@ -47,7 +47,7 @@ struct MetricsRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
     func toMetrics() -> NetworkMetrics {
         NetworkMetrics(
             id: id,
-            deviceId: UUID(uuidString: deviceId)!,
+            deviceId: UUID(uuidString: deviceId) ?? UUID(),
             timestamp: timestamp,
             latency: LatencyStats(
                 min: latencyMin ?? 0,
@@ -58,7 +58,7 @@ struct MetricsRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
             ),
             jitter: jitter ?? 0,
             packetLoss: packetLoss ?? 0,
-            qualityScore: QualityScore(rawValue: qualityScore)!
+            qualityScore: QualityScore(rawValue: qualityScore) ?? .fair
         )
     }
 }

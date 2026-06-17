@@ -39,4 +39,11 @@ struct Device: Identifiable, Codable, Equatable {
     static func == (lhs: Device, rhs: Device) -> Bool {
         lhs.id == rhs.id
     }
+
+    // Sort-friendly computed properties (nil → empty string so they're Comparable)
+    var sortHostname: String { hostname ?? "" }
+    var sortMacAddress: String { macAddress ?? "" }
+    var sortVendor: String { vendor ?? "" }
+    var sortOpenPorts: Int { ports.filter { $0.state == .open }.count }
+    var sortStatus: Int { isOnline ? 1 : 0 }
 }

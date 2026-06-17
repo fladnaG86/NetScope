@@ -4,6 +4,7 @@ import SwiftUI
 struct NetScopeApp: App {
     // Services
     let subnetService = SubnetService()
+    let networkInterfaceService = NetworkInterfaceService()
     let pingService = PingService()
     let arpService = ArpService()
     let dnsService = DnsService()
@@ -47,7 +48,8 @@ struct NetScopeApp: App {
             macVendorService: macVendorService,
             scanState: scanState,
             deviceCache: deviceCache,
-            deviceRepository: deviceRepository
+            deviceRepository: deviceRepository,
+            settings: UserDefaultsSettingsProvider()
         )
         metricsController = MetricsController(
             pingService: pingService,
@@ -61,10 +63,15 @@ struct NetScopeApp: App {
             MainWindow(
                 scanController: scanController,
                 scanState: scanState,
+                defaultSubnet: networkInterfaceService.detectDefaultSubnet(),
                 metricsController: metricsController,
                 traceRouteService: traceRouteService,
                 mtuService: mtuService,
-                dnsDiagService: dnsDiagService
+                dnsDiagService: dnsDiagService,
+                bandwidthService: BandwidthService(),
+                pingService: pingService,
+                metricsCollector: metricsCollector,
+                dnsService: dnsService
             )
         }
         .defaultSize(width: 900, height: 600)

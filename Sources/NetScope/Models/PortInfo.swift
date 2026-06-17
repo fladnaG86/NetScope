@@ -1,7 +1,11 @@
 import Foundation
 
-enum TransportProtocol: String, Codable, CaseIterable {
+enum TransportProtocol: String, Codable, CaseIterable, Comparable {
     case tcp, udp
+
+    static func < (lhs: TransportProtocol, rhs: TransportProtocol) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
 }
 
 enum PortState: String, Codable {
@@ -14,4 +18,6 @@ struct PortInfo: Codable, Identifiable, Equatable {
     let transport: TransportProtocol
     let service: String?
     let state: PortState
+
+    var sortService: String { service ?? "" }
 }

@@ -10,6 +10,7 @@ final class ScanController: Sendable {
     let scanState: ScanStateActor
     let deviceCache: DeviceCacheActor
     let deviceRepository: any DeviceRepositoryProtocol
+    let settings: any SettingsProviderProtocol
 
     init(
         subnetService: any SubnetServiceProtocol,
@@ -20,7 +21,8 @@ final class ScanController: Sendable {
         macVendorService: any MacVendorServiceProtocol,
         scanState: ScanStateActor,
         deviceCache: DeviceCacheActor,
-        deviceRepository: any DeviceRepositoryProtocol
+        deviceRepository: any DeviceRepositoryProtocol,
+        settings: any SettingsProviderProtocol = UserDefaultsSettingsProvider()
     ) {
         self.subnetService = subnetService
         self.pingService = pingService
@@ -31,23 +33,29 @@ final class ScanController: Sendable {
         self.scanState = scanState
         self.deviceCache = deviceCache
         self.deviceRepository = deviceRepository
+        self.settings = settings
     }
 
     func scan(subnet: String, mode: ScanMode = .quick) async throws {
-        let subnetInfo = try subnetService.calculateSubnet(cidr: subnet)
+        let subnetInfo = try subnetService.parseTarget(subnet)
         let hosts = subnetService.enumerateHosts(subnet: subnetInfo)
+        let timeout = await MainActor.run { settings.scanTimeout }
+        let maxConcurrent = await MainActor.run { settings.maxConcurrentScans }
         await scanState.startScan(totalHosts: hosts.count)
 
-        // Phase 1: Parallel ping sweep
+        // Phase 1: Parallel ping sweep (bounded concurrency via actor)
         var liveHosts: [String] = []
+        let limiter = ConcurrencyLimiter(maxConcurrent)
         await withTaskGroup(of: String?.self) { group in
             for host in hosts {
                 if await scanState.isCancelled { break }
 
                 group.addTask { [pingService, scanState] in
+                    await limiter.acquire()
+                    defer { Task { await limiter.release() } }
                     guard await !scanState.isCancelled else { return nil }
                     do {
-                        let result = try await pingService.ping(host: host, timeout: 5.0)
+                        let result = try await pingService.ping(host: host, timeout: timeout)
                         await scanState.incrementScanned()
                         return result.isReachable ? host : nil
                     } catch {
@@ -68,29 +76,36 @@ final class ScanController: Sendable {
             throw ScanError.cancelled
         }
 
+        // Read ARP table once — ping sweep just populated it
+        let arpTable = await arpService.resolveAll()
+
+        // Debug: write ARP results
+        let dbg = "[Scan] ARP:\(arpTable.count) live:\(liveHosts.count) " + liveHosts.map { "\($0)=\(arpTable[$0] ?? "nil")" }.joined(separator: " ") + "\n"
+        let dbgData = dbg.data(using: .utf8) ?? Data()
+        try? dbgData.write(to: URL(fileURLWithPath: "/tmp/netscope_scan.log"), options: .atomic)
+
         // Phase 2: Parallel detail gathering for live hosts
         await withTaskGroup(of: Void.self) { group in
             for host in liveHosts {
                 if await scanState.isCancelled { break }
 
-                group.addTask { [arpService, dnsService, macVendorService, portService, scanState, deviceCache, deviceRepository, mode] in
+                group.addTask { [dnsService, macVendorService, portService, scanState, deviceCache, deviceRepository, mode, timeout] in
                     guard await !scanState.isCancelled else { return }
 
-                    // Concurrently gather ARP, DNS, and optionally port info
-                    async let arpResult = arpService.resolve(ip: host)
+                    // DNS lookup per host (can't batch this easily)
                     async let dnsResult = dnsService.reverseLookup(ip: host)
 
                     var portInfos: [PortInfo] = []
                     if mode == .deep {
                         let ports = Array(PortService.commonPorts.keys).sorted()
-                        let portResult = await portService.scan(host: host, ports: ports, timeout: 5.0)
+                        let portResult = await portService.scan(host: host, ports: ports, timeout: timeout)
                         portInfos = portResult.ports
                     }
 
-                    let arp = await arpResult
+                    let macAddress = arpTable[host]
                     let dns = await dnsResult
 
-                    let vendor = arp.macAddress.flatMap { macVendorService.lookup(macAddress: $0) }
+                    let vendor = macAddress.flatMap { macVendorService.lookup(macAddress: $0) }
 
                     // Check cache for existing device (to preserve UUID on re-scan)
                     let existingDevice = await deviceCache.get(ip: host)
@@ -100,7 +115,7 @@ final class ScanController: Sendable {
                         id: deviceId,
                         ip: host,
                         hostname: dns.hostname,
-                        macAddress: arp.macAddress,
+                        macAddress: macAddress,
                         vendor: vendor,
                         isOnline: true,
                         firstSeen: existingDevice?.firstSeen ?? Date(),
@@ -110,7 +125,12 @@ final class ScanController: Sendable {
 
                     await scanState.addDevice(device)
                     await deviceCache.set(device)
-                    try? await deviceRepository.save(device)
+                    do {
+                        try await deviceRepository.save(device)
+                    } catch {
+                        // Log but don't fail the scan — device is in UI cache
+                        print("[ScanController] Failed to save device \(host): \(error)")
+                    }
                 }
             }
         }

@@ -44,15 +44,9 @@ struct MtuService: Sendable {
         process.standardOutput = pipe
         process.standardError = Pipe()
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return false
-        }
-
+        let exitStatus = await AsyncProcess.run(process)
         // Exit code 0 = packet delivered without fragmentation
         // Exit code 2 = local error (often "message too long" when MTU exceeded)
-        return process.terminationStatus == 0
+        return exitStatus == 0
     }
 }

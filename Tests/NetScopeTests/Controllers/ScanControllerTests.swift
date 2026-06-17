@@ -15,6 +15,10 @@ struct MockSubnetServiceForScan: SubnetServiceProtocol {
         )
     }
 
+    func parseTarget(_ target: String) throws -> SubnetInfo {
+        try calculateSubnet(cidr: target)
+    }
+
     func enumerateHosts(subnet: SubnetInfo) -> [String] {
         ["192.168.1.1", "192.168.1.2"]
     }
@@ -33,6 +37,10 @@ struct MockPingForScan: PingServiceProtocol {
 struct MockArpForScan: ArpServiceProtocol {
     func resolve(ip: String) async -> ArpResult {
         ArpResult(ip: ip, macAddress: "AA:BB:CC:DD:EE:FF")
+    }
+
+    func resolveAll() async -> [String: String] {
+        ["192.168.1.1": "AA:BB:CC:DD:EE:FF", "192.168.1.2": "AA:BB:CC:DD:EE:FF"]
     }
 }
 
@@ -77,7 +85,8 @@ final class ScanControllerTests: XCTestCase {
             macVendorService: MockMacVendorForScan(),
             scanState: scanState,
             deviceCache: deviceCache,
-            deviceRepository: repo
+            deviceRepository: repo,
+            settings: TestSettingsProvider.quick
         )
     }
 

@@ -13,6 +13,10 @@ struct MockArpService: ArpServiceProtocol, Sendable {
     func resolve(ip: String) async -> ArpResult {
         ArpResult(ip: ip, macAddress: "00:11:22:33:44:55")
     }
+
+    func resolveAll() async -> [String: String] {
+        ["192.168.1.1": "00:11:22:33:44:55", "192.168.1.2": "00:11:22:33:44:66"]
+    }
 }
 
 struct MockDnsService: DnsServiceProtocol, Sendable {
@@ -36,6 +40,20 @@ struct MockSubnetService: SubnetServiceProtocol, Sendable {
             networkAddress: "192.168.1.0",
             mask: "255.255.255.0",
             broadcastAddress: "192.168.1.255",
+            hostRange: (start: "192.168.1.1", end: "192.168.1.254"),
+            totalHosts: 254
+        )
+    }
+
+    func parseTarget(_ target: String) throws -> SubnetInfo {
+        // Delegate to calculateSubnet for CIDR, or return mock for ranges
+        if target.contains("/") {
+            return try calculateSubnet(cidr: target)
+        }
+        return SubnetInfo(
+            networkAddress: "192.168.1.1",
+            mask: "255.255.255.0",
+            broadcastAddress: "192.168.1.254",
             hostRange: (start: "192.168.1.1", end: "192.168.1.254"),
             totalHosts: 254
         )

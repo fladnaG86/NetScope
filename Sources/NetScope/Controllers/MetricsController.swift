@@ -35,9 +35,11 @@ final class MetricsController: Sendable {
                     await collector.addSample(latency)
                 } else {
                     failCount += 1
+                    await collector.addFailedPing()
                 }
             } catch {
                 failCount += 1
+                await collector.addFailedPing()
             }
 
             // Don't wait after the last sample

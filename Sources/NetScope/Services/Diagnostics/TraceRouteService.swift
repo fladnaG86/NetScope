@@ -25,10 +25,8 @@ struct TraceRouteService: Sendable {
         process.standardOutput = pipe
         process.standardError = Pipe()
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
+        let exitStatus = await AsyncProcess.run(process)
+        guard exitStatus != nil else {
             return TraceRouteResult(hops: [], destination: host, reachedDestination: false)
         }
 

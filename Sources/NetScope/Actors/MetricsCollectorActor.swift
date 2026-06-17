@@ -2,6 +2,7 @@ import Foundation
 
 actor MetricsCollectorActor {
     private var samples: [Double] = []
+    private var failedPings: Int = 0
     private let maxSamples: Int
     private var storedDeviceId: UUID?
 
@@ -16,6 +17,10 @@ actor MetricsCollectorActor {
         }
     }
 
+    func addFailedPing() {
+        failedPings += 1
+    }
+
     func setDeviceId(_ deviceId: UUID) {
         storedDeviceId = deviceId
     }
@@ -23,11 +28,11 @@ actor MetricsCollectorActor {
     func calculateMetrics(deviceId: UUID? = nil) -> NetworkMetrics? {
         guard !samples.isEmpty else { return nil }
 
-        let deviceId = deviceId ?? storedDeviceId ?? UUID()
+        let deviceId = storedDeviceId ?? deviceId ?? UUID()
         let sorted = samples.sorted()
 
-        let min = sorted.first!
-        let max = sorted.last!
+        let min = sorted[0]
+        let max = sorted[sorted.count - 1]
         let average = samples.reduce(0, +) / Double(samples.count)
 
         // Median
@@ -45,11 +50,19 @@ actor MetricsCollectorActor {
         // Jitter = standard deviation (simplified)
         let jitter = standardDeviation
 
-        // Quality score
+        // Packet loss: ratio of failed pings to total attempts
+        let totalAttempts = samples.count + failedPings
+        let packetLoss = totalAttempts > 0 ? Double(failedPings) / Double(totalAttempts) : 0.0
+
+        // Quality score (factors in latency, jitter, AND packet loss)
         let qualityScore: QualityScore
-        if average < 10 && jitter < 2 {
+        if packetLoss > 0.5 {
+            qualityScore = .poor
+        } else if packetLoss > 0.2 {
+            qualityScore = .fair
+        } else if average < 10 && jitter < 2 && packetLoss < 0.05 {
             qualityScore = .excellent
-        } else if average < 50 && jitter < 10 {
+        } else if average < 50 && jitter < 10 && packetLoss < 0.1 {
             qualityScore = .good
         } else if average < 100 && jitter < 30 {
             qualityScore = .fair
@@ -65,13 +78,16 @@ actor MetricsCollectorActor {
             standardDeviation: standardDeviation
         )
 
+        // Reset failed pings counter after calculation
+        failedPings = 0
+
         return NetworkMetrics(
             id: nil,
             deviceId: deviceId,
             timestamp: Date(),
             latency: latency,
             jitter: jitter,
-            packetLoss: 0.0,
+            packetLoss: packetLoss,
             qualityScore: qualityScore
         )
     }

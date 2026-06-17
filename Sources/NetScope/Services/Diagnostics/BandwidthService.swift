@@ -18,17 +18,15 @@ struct BandwidthService: Sendable {
         whichProcess.standardOutput = whichPipe
         whichProcess.standardError = Pipe()
 
-        do {
-            try whichProcess.run()
-            whichProcess.waitUntilExit()
-        } catch {
+        let whichExitStatus = await AsyncProcess.run(whichProcess)
+        guard let whichExitStatus, whichExitStatus == 0 else {
             return fallbackResult(host: host, duration: duration)
         }
 
         let whichData = whichPipe.fileHandleForReading.readDataToEndOfFile()
         let whichOutput = String(data: whichData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-        guard whichProcess.terminationStatus == 0 && !whichOutput.isEmpty else {
+        guard !whichOutput.isEmpty else {
             return fallbackResult(host: host, duration: duration)
         }
 
@@ -41,14 +39,8 @@ struct BandwidthService: Sendable {
         process.standardOutput = pipe
         process.standardError = Pipe()
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return fallbackResult(host: host, duration: duration)
-        }
-
-        guard process.terminationStatus == 0 else {
+        let exitStatus = await AsyncProcess.run(process)
+        guard let exitStatus, exitStatus == 0 else {
             return fallbackResult(host: host, duration: duration)
         }
 

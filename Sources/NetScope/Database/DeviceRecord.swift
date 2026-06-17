@@ -38,7 +38,7 @@ struct DeviceRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
 
     func toDevice(ports: [PortInfo]) -> Device {
         Device(
-            id: UUID(uuidString: id)!,
+            id: UUID(uuidString: id) ?? UUID(),
             ip: ip,
             hostname: hostname,
             macAddress: macAddress,
@@ -84,9 +84,9 @@ struct PortRecord: Codable, FetchableRecord, PersistableRecord, Sendable {
         PortInfo(
             id: portNumber,
             number: portNumber,
-            transport: TransportProtocol(rawValue: `protocol`)!,
+            transport: TransportProtocol(rawValue: `protocol`) ?? .tcp,
             service: service,
-            state: PortState(rawValue: state)!
+            state: PortState(rawValue: state) ?? .closed
         )
     }
 }

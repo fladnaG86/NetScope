@@ -10,14 +10,13 @@ struct PingService: PingServiceProtocol {
         process.standardOutput = pipe
         process.standardError = Pipe()
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
+        let exitStatus = await AsyncProcess.run(process)
+        guard let exitStatus else {
+            print("[PingService] Failed to launch ping for \(host)")
             return PingResult(host: host, isReachable: false, latencyMs: nil)
         }
 
-        let isReachable = process.terminationStatus == 0
+        let isReachable = exitStatus == 0
 
         var latencyMs: Double? = nil
         if isReachable {
