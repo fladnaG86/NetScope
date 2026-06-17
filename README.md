@@ -1,3 +1,9 @@
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/da1185de-461a-4be3-8894-9685372301f1" />
+
+<img width="1012" height="712" alt="Screenshot 2026-06-17 alle 18 54 13" src="https://github.com/user-attachments/assets/61e35c14-b9b7-4c80-85d3-4b8513aecdd4" />
+
+
+
 # NetScope
 
 A native macOS network scanner built with SwiftUI. Discover devices on your local network, scan ports, measure link quality in real time, and run network diagnostics — all in a single Mac app.
